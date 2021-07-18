@@ -13,7 +13,7 @@ on:
 
 env:
   # TODO: Change variable to your image's name.
-  IMAGE_NAME: test-dev
+  IMAGE_NAME: windvista-main
   ENV: dev
 jobs:  
   # Run tests.
@@ -38,7 +38,7 @@ jobs:
       
       - name: Build image
         run: |
-          export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config-$ENV kv/devops/apps/windvista-main > zuul/frontend/src/utils/config.js
+          export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config-$ENV kv/devops/apps/test-dev > secrets/variable.env
           export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=ignore kv/devops/docker > .dockerignore
           docker build . --file Dockerfile --tag $IMAGE_NAME-$ENV
   # Push image to GitHub Packages.
