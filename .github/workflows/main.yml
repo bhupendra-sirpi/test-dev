@@ -1,4 +1,4 @@
-name: Build, Lint and Publish
+name: Build
 
 on:
   push:
@@ -9,7 +9,6 @@ jobs:
   build:
     runs-on: automate
     steps:
-      - uses: actions/checkout@v2
       - name: Fetch Deployment files
         run: |
             export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config kv/devops/kubernetes > config
