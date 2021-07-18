@@ -6,10 +6,7 @@ on:
     branches:
       - main
 jobs:  
-
   build:
-    needs: lint
-    # Ensure test job passes before pushing image.
     runs-on: automate
     steps:
       - uses: actions/checkout@v2
