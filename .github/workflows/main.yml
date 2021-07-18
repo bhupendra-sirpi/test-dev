@@ -1,17 +1,81 @@
-name: Build
+name: Build, Lint and Publish
 
 on:
   push:
     # Publish `main` as Docker `latest` image.
     branches:
       - main
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+  # Run tests for any PRs.
+  pull_request:
+
+env:
+  # TODO: Change variable to your image's name.
+  IMAGE_NAME: test-dev
+  ENV: dev
 jobs:  
-  build:
+  # Run tests.
+  # See also https://docs.docker.com/docker-hub/builds/automated-testing/
+  lint:
+    # Ensure test job passes before pushing image.
     runs-on: automate
     steps:
+      - uses: AutoModality/action-clean@v1
+      - uses: actions/checkout@v2
+
+  build:
+    needs: lint
+    # Ensure test job passes before pushing image.
+    runs-on: automate
+    steps:
+      - uses: actions/checkout@v2
       - name: Fetch Deployment files
         run: |
-            export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config kv/devops/kubernetes > config
-            git clone git@github.com/bhupendra-sirpi/test-dev.git
-            docker build -t test .
-            kubectl create pod test --image=test
+          mkdir -p helmfiles
+          git clone git@github.com:sirpi-io/devops.git helmfiles
+      
+      - name: Build image
+        run: |
+          export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config-$ENV kv/devops/apps/windvista-main > zuul/frontend/src/utils/config.js
+          export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=ignore kv/devops/docker > .dockerignore
+          docker build . --file Dockerfile --tag $IMAGE_NAME-$ENV
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+    # Ensure test job passes before pushing image.
+    needs: build
+    runs-on: automate
+    steps:
+      - name: Log into registry
+        run: |
+          USERNAME=$(export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=username kv/devops/docker)
+          PASSWORD=$(export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=password kv/devops/docker)
+          echo "$PASSWORD" | docker login docker.sirpi.io -u $USERNAME --password-stdin
+      - name: Push image
+        run: |
+          IMAGE_ID=docker.sirpi.io/$IMAGE_NAME-$ENV
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "developer" ] && VERSION=latest
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+          docker tag $IMAGE_NAME-$ENV $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+  Dev-Deploy:
+    needs: push
+    # Ensure test job passes before pushing image.
+    runs-on: devops
+    steps:
+      - name: Prep helm chart
+        run: |
+          cd helmfiles/helm/react-nginx
+          bash create_values.sh
+          export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config kv/devops/kubernetes > config
+          helm upgrade $IMAGE_NAME-$ENV ./ --install --wait --atomic --recreate-pods --values=./values.yaml --kubeconfig config -n developer
