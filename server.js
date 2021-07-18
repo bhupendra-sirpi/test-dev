@@ -11,7 +11,7 @@ const app = express()
 require('./dotenv')
 
 // Replace process.env.DB_URL with your actual connection string
-const connectionString = process.env.DB_URL
+const connectionString = "mongodb://admin:xWrjnsErFG@10.244.4.44:27017"
 
 MongoClient.connect(connectionString, { useUnifiedTopology: true })
   .then(client => {
