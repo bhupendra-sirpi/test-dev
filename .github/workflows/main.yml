@@ -5,20 +5,7 @@ on:
     # Publish `main` as Docker `latest` image.
     branches:
       - main
-    # Publish `v1.2.3` tags as releases.
-    tags:
-      - v*
-  # Run tests for any PRs.
-  pull_request:
 jobs:  
-  # Run tests.
-  # See also https://docs.docker.com/docker-hub/builds/automated-testing/
-  lint:
-    # Ensure test job passes before pushing image.
-    runs-on: automate
-    steps:
-      - uses: AutoModality/action-clean@v1
-      - uses: actions/checkout@v2
 
   build:
     needs: lint
