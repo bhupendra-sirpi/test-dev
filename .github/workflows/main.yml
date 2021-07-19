@@ -13,7 +13,7 @@ on:
 
 env:
   # TODO: Change variable to your image's name.
-  IMAGE_NAME: windvista-main
+  IMAGE_NAME: test
   ENV: dev
 jobs:  
   # Run tests.
