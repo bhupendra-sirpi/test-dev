@@ -38,7 +38,7 @@ jobs:
       
       - name: Build image
         run: |
-          export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config-$ENV kv/devops/apps/test-dev > secrets/variable.env
+          export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=config-$ENV kv/devops/apps/test-dev > variable.env
           export VAULT_TOKEN="${{ secrets.VaultToken }}" && vault kv get -address="https://vault.sirpi.co.in" -field=ignore kv/devops/docker > .dockerignore
           docker build . --file Dockerfile --tag $IMAGE_NAME-$ENV
   # Push image to GitHub Packages.
